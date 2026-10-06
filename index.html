@@ -52,7 +52,7 @@ body.cam{background:#000}body.cam .top,body.cam .dock,body.cam .loading{display:
 <canvas id="cv" aria-label="معاينة ثلاثية الأبعاد للقطعة بمقاسها الحقيقي، اسحب لتدويرها وقرّب بإصبعين"></canvas>
 <div class="loading" id="loading">جارٍ تجهيز القطعة…</div>
 <div class="top">
-  <div><h1>ذهب على طاولتك</h1><p>شاهد القطعة بمقاسها الحقيقي في غرفتك قبل زيارة المحل</p></div>
+  <div><h1>ذهب على طاولتك</h1><p>شاهد القطعة بمقاسها الحقيقي في غرفتك قبل زيارة المحل</p><small style="color:var(--muted);opacity:.6;font-size:.65rem">الإصدار 3</small></div>
   <span class="size" id="size">المقاس <b>—</b></span>
 </div>
 <div class="dock"><section class="card">
@@ -119,14 +119,13 @@ let arcore=false;
 function setAR(k){const a=$("arBtn");
   if(AR_BASE&&isIOS){a.removeAttribute("target");a.href=`${AR_BASE}/${k}.usdz`;a.setAttribute("rel","ar");if(!a.querySelector("img")){const i=document.createElement("img");i.alt="";i.width=1;i.height=1;i.style.cssText="position:absolute;opacity:0";a.appendChild(i)}
     $("how").textContent="يفتح العارض المدمج في الآيفون. وجّه الكاميرا إلى الطاولة حتى تستقر القطعة، ثم حرّكها بإصبعك.";return}
-  if(AR_BASE&&isAndroid&&!arcore){a.removeAttribute("href");a.removeAttribute("target");$("camAlt").hidden=true;
+  if(isAndroid){a.removeAttribute("href");a.removeAttribute("target");a.removeAttribute("rel");
+    const g=$("camAlt");g.hidden=!arcore;g.textContent="أو افتحها في عارض قوقل";g.dataset.k=k;
     $("how").textContent="يفتح كاميرا جوالك وتظهر القطعة فوق طاولتك، ويمكنك التقاط صورة لها.";return}
-  if(AR_BASE&&isAndroid){$("camAlt").hidden=false;a.removeAttribute("target");a.href=`intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(`${AR_BASE}/${k}.glb`)}&mode=ar_preferred&title=${encodeURIComponent(P[k].title)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(location.href)};end;`;
-    $("how").textContent="يفتح عارض قوقل للواقع المعزز. حرّك الجوال ببطء فوق الطاولة حتى تظهر القطعة بمقاسها الحقيقي.";return}
   a.removeAttribute("href");a.setAttribute("role","button");a.tabIndex=0;
-  $("how").textContent=isIOS||isAndroid?"اضغط الزر لمعرفة طريقة التجربة على جوالك.":"الواقع المعزز يعمل من الجوال. افتح هذه الصفحة من الآيفون أو أندرويد."}
+  $("how").textContent="يفتح الكاميرا وتظهر القطعة أمامك. التجربة الأفضل من الجوال."}
 $("arBtn").addEventListener("click",e=>{if($("arBtn").href)return;e.preventDefault();startCam()});
-$("camAlt").onclick=()=>startCam();
+$("camAlt").onclick=()=>{const k=$("camAlt").dataset.k||cur;location.href=`intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(`${AR_BASE}/${k}.glb`)}&mode=ar_preferred&title=${encodeURIComponent(P[k].title)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(location.href)};end;`};
 $("picks").onclick=e=>{const b=e.target.closest("[data-k]");if(b)show(b.dataset.k)};
 
 const ptrs=new Map();let pinch=0;
@@ -160,8 +159,11 @@ const ray=new THREE.Raycaster(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0
 function planeHit(x,y){ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1);ray.setFromCamera(ndc,camera);return ray.ray.intersectPlane(plane,new THREE.Vector3())}
 async function startCam(){
   try{if(typeof DeviceOrientationEvent!=="undefined"&&DeviceOrientationEvent.requestPermission)await DeviceOrientationEvent.requestPermission().catch(()=>{})}catch(e){}
-  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false})}
-  catch(e){$("how").textContent="لم يُسمح باستخدام الكاميرا. اسمح للمتصفح بالكاميرا من إعدادات الموقع ثم أعد المحاولة.";return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("how").textContent="هذا المتصفح لا يسمح بفتح الكاميرا. افتح الرابط في متصفح Chrome.";return}
+  $("how").textContent="جارٍ فتح الكاميرا…";
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})}
+  catch(e){try{stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false})}catch(e2){
+    $("how").textContent=e2&&e2.name==="NotAllowedError"?"رُفض إذن الكاميرا. اضغط رمز القفل بجانب الرابط، واسمح بالكاميرا، ثم أعد المحاولة.":"تعذّر فتح الكاميرا ("+((e2&&e2.name)||"خطأ")+"). أغلق أي تطبيق يستخدم الكاميرا ثم أعد المحاولة.";return}}
   const v=$("video");v.srcObject=stream;v.hidden=false;await v.play().catch(()=>{});
   cam=true;yaw0=null;camScale=1;holder.position.set(0,0,0);document.body.classList.add("cam");$("camui").hidden=false;disc.visible=false;
   scene.background=null;renderer.setClearColor(0x000000,0);addEventListener("deviceorientation",onOri);
