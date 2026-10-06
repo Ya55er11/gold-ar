@@ -1,0 +1,154 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>جرّبيه عليك</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap">
+<style>
+/* Layout: a jeweller's mirror; the front camera fills the screen, pieces sit on a strip below like a velvet tray */
+:root{
+  --bg:#08070A; --ink:#F4EAD2; --muted:#A99A7C; --gold:#E2BC62; --line:rgba(226,188,98,.3); --glass:rgba(14,11,8,.78);
+  --g-grad:linear-gradient(110deg,#8A6420 0%,#E9C873 22%,#FFF3C8 32%,#D9AE4C 46%,#9C7424 62%,#F2D88C 82%,#B88A2E 100%);
+  --display:"Aref Ruqaa","IBM Plex Sans Arabic",Tahoma,serif; --body:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(ellipse at 50% 35%,#1c1710,var(--bg) 65%);color:var(--ink);font-family:var(--body);overflow:hidden}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.top{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));inset-inline:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:3}
+.top h1{margin:0;font-family:var(--display);font-size:1.7rem;background:var(--g-grad);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+.pill{font:inherit;font-size:.8rem;color:var(--ink);text-decoration:none;background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:7px 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.status{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:3;font-size:.82rem;background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:6px 14px;white-space:nowrap}
+.dock{position:fixed;inset-inline:0;bottom:0;z-index:3;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(0deg,rgba(8,7,10,.92),rgba(8,7,10,.6) 70%,transparent);display:flex;flex-direction:column;gap:10px;align-items:center}
+.tray{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px;scrollbar-width:none}
+.tray::-webkit-scrollbar{display:none}
+.piece{flex:none;width:76px;height:76px;border-radius:14px;border:1px solid var(--line);background:#14110c center/78% no-repeat;cursor:pointer;position:relative;font:inherit;color:var(--muted);font-size:.7rem;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+.piece[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.piece.add{background:rgba(226,188,98,.08);align-items:center;font-size:.78rem;color:var(--gold);line-height:1.3;text-align:center}
+.piece small{position:absolute;top:4px;inset-inline-start:6px;font-size:.6rem;color:var(--muted)}
+.ctrl{display:flex;align-items:center;gap:14px;width:min(520px,100%)}
+.ctrl label{flex:1;display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted)}
+.ctrl input[type=range]{flex:1;accent-color:var(--gold)}
+.shutter{flex:none;width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:var(--g-grad);cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.sheet{position:fixed;inset:0;z-index:6;display:grid;place-items:center;grid-template-columns:minmax(0,440px);justify-content:center;padding:16px;background:rgba(0,0,0,.72)}
+.card{width:100%;box-sizing:border-box;background:linear-gradient(180deg,#1b1610,#0f0c08);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.card h2{margin:0;font-family:var(--display);color:var(--gold);font-size:1.6rem}
+.card p{margin:0;line-height:1.8;font-size:.92rem;color:var(--ink)}
+.card small{color:var(--muted);line-height:1.6}
+.btn{font:inherit;font-weight:600;font-size:.95rem;border-radius:12px;padding:11px 18px;cursor:pointer;border:1px solid #F5DC97;color:#1A1307;background:var(--g-grad);text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:8px}
+.btn.ghost{background:transparent;color:var(--gold);border-color:var(--line)}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.shot img{max-width:100%;max-height:62vh;border-radius:12px;border:1px solid var(--line)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+</style></head><body>
+<canvas id="cv" aria-label="صورتك من الكاميرا الأمامية مع قطعة الذهب"></canvas>
+<video id="video" playsinline muted autoplay hidden></video>
+<div class="top"><h1>جرّبيه عليك</h1><a class="pill" href="./">العرض ثلاثي الأبعاد ←</a></div>
+<div class="status" id="status" hidden></div>
+<div class="dock" id="dock" hidden>
+  <div class="tray" id="tray"></div>
+  <div class="ctrl"><label>الحجم <input type="range" id="size" min="0.6" max="1.6" step="0.01" value="1"></label><button class="shutter" id="snap" aria-label="التقطي صورة"></button><label id="tolWrap" hidden>الخلفية <input type="range" id="tol" min="10" max="120" step="1" value="48"></label></div>
+</div>
+<input type="file" id="file" accept="image/*" hidden>
+
+<div class="sheet" id="intro"><div class="card">
+  <h2>جرّبي الذهب عليك</h2>
+  <p>افتحي الكاميرا الأمامية، واختاري عقداً أو حَلَقاً، فيظهر عليك ويتحرك معك. أو ارفعي صورة قطعة حقيقية من المحل.</p>
+  <small>صورتك لا تخرج من جوالك ولا تُرفع لأي مكان، والمعالجة كلها داخل الجوال.</small>
+  <button class="btn" id="start">افتحي الكاميرا</button>
+  <small id="startErr"></small>
+</div></div>
+
+<div class="sheet" id="kind" hidden><div class="card">
+  <h2>ما نوع القطعة؟</h2>
+  <p>صوّري القطعة من الأمام على قماش أو ورق بلون واحد، فيزيل الموقع الخلفية وحده.</p>
+  <div class="row"><button class="btn" data-kind="necklace">عقد أو سلسال</button><button class="btn" data-kind="earring">حَلَق (فردة واحدة)</button></div>
+  <button class="btn ghost" data-close>إلغاء</button>
+</div></div>
+
+<div class="sheet shot" id="shot" hidden><div class="card">
+  <img id="shotImg" alt="صورتك مع قطعة الذهب">
+  <div class="row"><a class="btn" id="shotSave" download="jarribih.jpg">حفظ الصورة</a><button class="btn" id="shotShare" hidden>مشاركة</button><button class="btn ghost" data-close>رجوع</button></div>
+</div></div>
+
+<script type="module">
+import * as faceapi from './vendor/face-api.esm.js';
+const $=id=>document.getElementById(id);
+const cv=$("cv"),ctx=cv.getContext("2d"),video=$("video");
+const PIECES=[{id:"n1",kind:"necklace",src:"jewelry/necklace.png",label:"عقد",tag:"نموذج"},{id:"e1",kind:"earring",src:"jewelry/earring.png",label:"حَلَق",tag:"نموذج"}];
+let active=null,both={necklace:null,earring:null},running=false,lastFace=0,lum=.5;
+const imgs={};
+function loadImg(p){return imgs[p.id]||(imgs[p.id]=new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=p.src}))}
+function renderTray(){$("tray").innerHTML=PIECES.map(p=>`<button class="piece" data-id="${p.id}" aria-pressed="${both[p.kind]===p.id}" style="background-image:url('${p.src}')"><small>${p.tag}</small>${p.label}</button>`).join("")+`<button class="piece add" id="add">+ صورة<br>قطعتك</button>`}
+$("tray").onclick=e=>{if(e.target.closest("#add")){$("kind").hidden=false;return}const b=e.target.closest("[data-id]");if(!b)return;const p=PIECES.find(x=>x.id===b.dataset.id);
+  both[p.kind]=both[p.kind]===p.id?null:p.id;active=p;loadImg(p);$("tolWrap").hidden=!p.user;renderTray()};
+document.addEventListener("click",e=>{if(e.target.closest("[data-close]"))e.target.closest(".sheet").hidden=true});
+let pendingKind="necklace";
+$("kind").onclick=e=>{const b=e.target.closest("[data-kind]");if(!b)return;pendingKind=b.dataset.kind;$("kind").hidden=true;$("file").click()};
+
+// ---------- background removal for a merchant photo on a plain backdrop ----------
+let rawUser=null;
+function cutout(img,tol){const M=900,k=Math.min(1,M/Math.max(img.width,img.height)),w=Math.round(img.width*k),h=Math.round(img.height*k);
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);const im=x.getImageData(0,0,w,h),d=im.data;
+  let hasAlpha=false;for(let i=3;i<d.length;i+=40)if(d[i]<250){hasAlpha=true;break}
+  if(!hasAlpha){const rs=[],gs=[],bs=[],push=(i)=>{rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2])};
+    for(let X=0;X<w;X+=3){push(X*4);push(((h-1)*w+X)*4)}for(let Y=0;Y<h;Y+=3){push(Y*w*4);push((Y*w+w-1)*4)}
+    const med=a=>a.sort((p,q)=>p-q)[a.length>>1],br=med(rs),bg=med(gs),bb=med(bs);
+    for(let i=0;i<d.length;i+=4){const dist=Math.hypot(d[i]-br,d[i+1]-bg,d[i+2]-bb);d[i+3]=Math.max(0,Math.min(255,(dist-tol)/(tol*.7)*255))}}
+  let x0=w,y0=h,x1=0,y1=0;for(let Y=0;Y<h;Y++)for(let X=0;X<w;X++)if(d[(Y*w+X)*4+3]>40){if(X<x0)x0=X;if(X>x1)x1=X;if(Y<y0)y0=Y;if(Y>y1)y1=Y}
+  x.putImageData(im,0,0);if(x1<=x0||y1<=y0)return c.toDataURL();
+  const o=document.createElement("canvas");o.width=x1-x0+1;o.height=y1-y0+1;o.getContext("2d").drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);return o.toDataURL("image/png")}
+function applyUser(){if(!rawUser)return;const p=PIECES.find(x=>x.id==="u_"+rawUser.kind),src=cutout(rawUser.img,+$("tol").value);
+  if(p){p.src=src;delete imgs[p.id]}else PIECES.unshift({id:"u_"+rawUser.kind,kind:rawUser.kind,src,label:rawUser.kind==="necklace"?"عقدك":"حَلَقك",tag:"صورتك",user:true});
+  both[rawUser.kind]="u_"+rawUser.kind;active=PIECES.find(x=>x.id==="u_"+rawUser.kind);loadImg(active);$("tolWrap").hidden=false;renderTray()}
+$("file").onchange=()=>{const f=$("file").files[0];if(!f)return;const i=new Image();i.onload=()=>{rawUser={img:i,kind:pendingKind};applyUser()};i.src=URL.createObjectURL(f);$("file").value=""};
+let tolT;$("tol").oninput=()=>{clearTimeout(tolT);tolT=setTimeout(applyUser,120)};
+
+// ---------- camera + face tracking ----------
+async function start(){$("startErr").textContent="جارٍ التجهيز…";
+  if(!navigator.mediaDevices?.getUserMedia){$("startErr").textContent="هذا المتصفح لا يفتح الكاميرا. افتحي الرابط في Chrome أو Safari.";return}
+  try{video.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1280},height:{ideal:720}},audio:false});await video.play()}
+  catch(e){$("startErr").textContent=e.name==="NotAllowedError"?"لم يُسمح بالكاميرا. اسمحي بها من إعدادات المتصفح ثم أعيدي المحاولة.":"تعذّر فتح الكاميرا ("+e.name+").";return}
+  $("startErr").textContent="جارٍ تحميل تتبّع الوجه…";
+  try{await faceapi.nets.tinyFaceDetector.loadFromUri("models/face");await faceapi.nets.faceLandmark68Net.loadFromUri("models/face")}
+  catch(e){$("startErr").textContent="تعذّر تحميل تتبّع الوجه. تحققي من الإنترنت وأعيدي المحاولة.";return}
+  $("intro").hidden=true;$("dock").hidden=false;both.necklace="n1";active=PIECES[0];renderTray();PIECES.forEach(loadImg);running=true;track();requestAnimationFrame(draw)}
+$("start").onclick=start;
+
+const S={};const smooth=(k,v,a)=>{S[k]=S[k]==null?v:S[k]+(v-S[k])*a;return S[k]};
+const opts=new faceapi.TinyFaceDetectorOptions({inputSize:256,scoreThreshold:.35});
+async function track(){while(running){if(video.readyState>=2){try{const r=await faceapi.detectSingleFace(video,opts).withFaceLandmarks();
+      if(r){const p=r.landmarks.positions;const L=i=>p[i];const f={};
+        const eyeL=mid(p,36,41),eyeR=mid(p,42,47);f.roll=Math.atan2(eyeR.y-eyeL.y,eyeR.x-eyeL.x);
+        f.w=Math.hypot(L(16).x-L(0).x,L(16).y-L(0).y);f.chinX=L(8).x;f.chinY=L(8).y;
+        f.lobeAx=L(1).x*.45+L(2).x*.55;f.lobeAy=L(1).y*.45+L(2).y*.55;f.lobeBx=L(15).x*.45+L(14).x*.55;f.lobeBy=L(15).y*.45+L(14).y*.55;
+        f.ratio=(L(30).x-L(0).x)/(L(16).x-L(0).x);
+        const a=Math.min(1,.55);for(const k in f)smooth(k,f[k],a);lastFace=performance.now()}}catch(e){}}
+    await new Promise(r=>setTimeout(r,0))}}
+const mid=(p,a,b)=>{let x=0,y=0;for(let i=a;i<=b;i++){x+=p[i].x;y+=p[i].y}const n=b-a+1;return{x:x/n,y:y/n}};
+
+let W=0,H=0,DPR=1;function resize(){DPR=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR}addEventListener("resize",resize);resize();
+let lumT=0;const lc=document.createElement("canvas");lc.width=lc.height=8;const lx=lc.getContext("2d",{willReadFrequently:true});
+function draw(t){if(!running)return;requestAnimationFrame(draw);const vw=video.videoWidth,vh=video.videoHeight;if(!vw)return;
+  const s=Math.max(W/vw,H/vh),ox=(W-vw*s)/2,oy=(H-vh*s)/2;
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(video,ox,oy,vw*s,vh*s);ctx.restore();
+  if(t-lumT>600){lumT=t;try{lx.drawImage(video,0,0,8,8);const d=lx.getImageData(0,0,8,8).data;let L=0;for(let i=0;i<d.length;i+=4)L+=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];lum=L/(d.length/4)/255}catch(e){}}
+  const seen=performance.now()-lastFace<700;$("status").hidden=seen;if(!seen){$("status").textContent="قرّبي وجهك وانظري إلى الكاميرا";return}
+  const X=x=>W-(ox+x*s),Y=y=>oy+y*s,fw=S.w*s,size=+$("size").value,roll=-S.roll;
+  ctx.filter=`brightness(${(.72+lum*.7).toFixed(2)}) saturate(1.05)`;
+  const n=both.necklace&&PIECES.find(p=>p.id===both.necklace);
+  if(n&&imgs[n.id]&&imgs[n.id].then){imgs[n.id].then(i=>imgs[n.id+"_i"]=i)}
+  if(n&&imgs[n.id+"_i"]){const i=imgs[n.id+"_i"],w=fw*.98*size*(n.user?1:1.06),h=w*i.height/i.width;
+    ctx.save();ctx.translate(X(S.chinX),Y(S.chinY));ctx.rotate(roll*.6);ctx.drawImage(i,-w/2,fw*.16,w,h);ctx.restore()}
+  const e=both.earring&&PIECES.find(p=>p.id===both.earring);
+  if(e&&imgs[e.id]&&imgs[e.id].then){imgs[e.id].then(i=>imgs[e.id+"_i"]=i)}
+  if(e&&imgs[e.id+"_i"]){const i=imgs[e.id+"_i"],h=fw*.36*size,w=h*i.width/i.height;
+    const put=(x,y,show)=>{if(!show)return;ctx.save();ctx.translate(X(x),Y(y));ctx.rotate(roll*.3);ctx.drawImage(i,-w/2,-h*.04,w,h);ctx.restore()};
+    const out=S.w*.035;put(S.lobeAx-out,S.lobeAy,S.ratio>.43);put(S.lobeBx+out,S.lobeBy,S.ratio<.57)}
+  ctx.filter="none"}
+
+// ---------- photo ----------
+$("snap").onclick=()=>{const c=document.createElement("canvas");c.width=cv.width;c.height=cv.height;const x=c.getContext("2d");x.drawImage(cv,0,0);
+  x.font=`600 ${15*DPR}px "IBM Plex Sans Arabic",Tahoma`;x.fillStyle="rgba(255,236,190,.92)";x.textAlign="right";x.fillText("جرّبيه عليك · منصة الذهب",c.width-14*DPR,c.height-16*DPR);
+  c.toBlob(b=>{const u=URL.createObjectURL(b);$("shotImg").src=u;$("shotSave").href=u;$("shot").hidden=false;const f=new File([b],"jarribih.jpg",{type:"image/jpeg"});
+    $("shotShare").hidden=!(navigator.canShare&&navigator.canShare({files:[f]}));$("shotShare").onclick=()=>navigator.share({files:[f]}).catch(()=>{})},"image/jpeg",.92)};
+renderTray();window.__S=S;
+</script></body></html>
