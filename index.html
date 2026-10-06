@@ -35,6 +35,17 @@ h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,4.
 button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .loading{position:fixed;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.9rem;pointer-events:none}
 @media (max-width:520px){.card{padding:12px}.top p{display:none}}
+#video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;background:#000}
+body.cam{background:#000}body.cam .top,body.cam .dock,body.cam .loading{display:none!important}body.cam #cv{z-index:1;cursor:move}
+.camui{position:fixed;inset:0;z-index:3;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.camui .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.camui .tip{pointer-events:none;align-self:center;max-width:34ch;text-align:center;font-size:.85rem;line-height:1.6;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.round{pointer-events:auto;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--ink);font:inherit;font-size:1.4rem;cursor:pointer;display:grid;place-items:center}
+.shutter{pointer-events:auto;width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:var(--g-grad);cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.alt{font:inherit;font-size:.8rem;color:var(--gold);background:none;border:0;text-decoration:underline;cursor:pointer;padding:0}
+.shot{position:fixed;inset:0;z-index:5;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
+.shot img{max-width:100%;max-height:72vh;border-radius:14px;border:1px solid var(--line)}
+.shot .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 @media (prefers-reduced-motion:reduce){h1{animation:none}}
 </style>
 
@@ -54,8 +65,16 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
     <a class="btn" id="arBtn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span>اعرضها في غرفتي</span></a>
     <div class="how" id="how"></div>
   </div>
+  <button class="alt" id="camAlt" hidden>أو اعرضها بكاميرا المتصفح</button>
 </section></div>
 
+<video id="video" playsinline muted autoplay hidden></video>
+<div class="camui" id="camui" hidden>
+  <div class="row"><button class="round" id="camClose" aria-label="إغلاق الكاميرا">×</button><span class="size" id="camSize"></span></div>
+  <div class="tip" id="camTip">أمسك الجوال فوق الطاولة بنحو 30 سم ووجّهه إليها. اسحب القطعة بإصبعك لتحريكها، وقرّب أو أبعد بإصبعين.</div>
+  <div class="row" style="justify-content:center"><button class="shutter" id="snap" aria-label="التقط صورة"></button></div>
+</div>
+<div class="shot" id="shot" hidden><img id="shotImg" alt="صورة القطعة على طاولتك"><div class="row"><a class="btn" id="shotSave" download="dhahab.jpg">حفظ الصورة</a><button class="btn" id="shotShare" hidden>مشاركة</button><button class="round" id="shotClose" aria-label="رجوع">×</button></div></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -96,32 +115,69 @@ async function show(k){cur=k;[...$("picks").children].forEach(b=>b.setAttribute(
   catch(e){$("loading").textContent="تعذّر تحميل القطعة. أعد فتح الصفحة.";$("loading").hidden=false}}
 // Where the AR files live once the platform is on its own domain (glb for Android, usdz for iPhone). Empty = this preview.
 const AR_BASE=new URL("models",location.href).href;
+let arcore=false;
 function setAR(k){const a=$("arBtn");
   if(AR_BASE&&isIOS){a.removeAttribute("target");a.href=`${AR_BASE}/${k}.usdz`;a.setAttribute("rel","ar");if(!a.querySelector("img")){const i=document.createElement("img");i.alt="";i.width=1;i.height=1;i.style.cssText="position:absolute;opacity:0";a.appendChild(i)}
     $("how").textContent="يفتح العارض المدمج في الآيفون. وجّه الكاميرا إلى الطاولة حتى تستقر القطعة، ثم حرّكها بإصبعك.";return}
-  if(AR_BASE&&isAndroid){a.removeAttribute("target");a.href=`intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(`${AR_BASE}/${k}.glb`)}&mode=ar_preferred&title=${encodeURIComponent(P[k].title)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(location.href)};end;`;
+  if(AR_BASE&&isAndroid&&!arcore){a.removeAttribute("href");a.removeAttribute("target");$("camAlt").hidden=true;
+    $("how").textContent="يفتح كاميرا جوالك وتظهر القطعة فوق طاولتك، ويمكنك التقاط صورة لها.";return}
+  if(AR_BASE&&isAndroid){$("camAlt").hidden=false;a.removeAttribute("target");a.href=`intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(`${AR_BASE}/${k}.glb`)}&mode=ar_preferred&title=${encodeURIComponent(P[k].title)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(location.href)};end;`;
     $("how").textContent="يفتح عارض قوقل للواقع المعزز. حرّك الجوال ببطء فوق الطاولة حتى تظهر القطعة بمقاسها الحقيقي.";return}
   a.removeAttribute("href");a.setAttribute("role","button");a.tabIndex=0;
   $("how").textContent=isIOS||isAndroid?"اضغط الزر لمعرفة طريقة التجربة على جوالك.":"الواقع المعزز يعمل من الجوال. افتح هذه الصفحة من الآيفون أو أندرويد."}
-$("arBtn").addEventListener("click",e=>{if($("arBtn").href)return;e.preventDefault();
-  $("how").textContent="هذه معاينة. على موقع المنصة يفتح الزر كاميرا جوالك وتظهر القطعة على طاولتك مباشرة. ولتجربتها الآن افتح ملف القطعة المرسل لك في المحادثة من جوالك."});
+$("arBtn").addEventListener("click",e=>{if($("arBtn").href)return;e.preventDefault();startCam()});
+$("camAlt").onclick=()=>startCam();
 $("picks").onclick=e=>{const b=e.target.closest("[data-k]");if(b)show(b.dataset.k)};
 
 const ptrs=new Map();let pinch=0;
 cv.addEventListener("pointerdown",e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);cv.setPointerCapture(e.pointerId)});
 cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);idle=0;
+  if(cam){if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)camScale=Math.min(2.2,Math.max(.4,camScale*d/pinch));pinch=d;return}
+    const hit=planeHit(e.clientX,e.clientY);if(hit){holder.position.x=hit.x;holder.position.z=hit.z}return}
   if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)zoom=Math.min(1.6,Math.max(.45,zoom*pinch/d));pinch=d;return}
   yaw-=(e.clientX-prev[0])*.008;pitch=Math.min(1.25,Math.max(.08,pitch+(e.clientY-prev[1])*.006))});
 const up=e=>{ptrs.delete(e.pointerId);pinch=0};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
 cv.addEventListener("wheel",e=>{e.preventDefault();zoom=Math.min(1.6,Math.max(.45,zoom*(1+e.deltaY*.001)))},{passive:false});
 
-function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);const a=w/h<.8?.36:.22;camera.aspect=w/(h*(1+a));camera.fov=2*Math.atan(Math.tan((w/h<.8?40:30)*Math.PI/360)*(1+a))*180/Math.PI;camera.setViewOffset(w,h*(1+a),0,h*a,w,h);camera.updateProjectionMatrix()}
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);if(cam){camera.clearViewOffset();camera.aspect=w/h;camera.fov=w/h<1?62:45;camera.updateProjectionMatrix();return}const a=w/h<.8?.36:.22;camera.aspect=w/(h*(1+a));camera.fov=2*Math.atan(Math.tan((w/h<.8?40:30)*Math.PI/360)*(1+a))*180/Math.PI;camera.setViewOffset(w,h*(1+a),0,h*a,w,h);camera.updateProjectionMatrix()}
 addEventListener("resize",resize);resize();
 const clock=new THREE.Clock();
-renderer.setAnimationLoop(()=>{const dt=Math.min(.05,clock.getDelta());idle+=dt;if(!reduce&&idle>2.5)holder.rotation.y+=dt*.25;
+renderer.setAnimationLoop(()=>{const dt=Math.min(.05,clock.getDelta());idle+=dt;
+  if(cam){camUpdate();holder.scale.setScalar(camScale);renderer.render(scene,camera);return}if(!reduce&&idle>2.5)holder.rotation.y+=dt*.25;
   const asp=innerWidth/innerHeight,r=radius*zoom*(asp<.8?1.45:asp<1.2?1.25:1)*2.75;
   camera.position.set(Math.sin(yaw)*Math.cos(pitch)*r,Math.sin(pitch)*r+.004,Math.cos(yaw)*Math.cos(pitch)*r);camera.lookAt(0,.006,0);
   renderer.render(scene,camera)});
+// ---------- camera mode: the piece over the live camera, steadied by the phone's gyroscope ----------
+var cam=false,camScale=1,stream=null,ori=null,yaw0=null;const qOff=new THREE.Quaternion(),qDev=new THREE.Quaternion(),eul=new THREE.Euler(),zee=new THREE.Vector3(0,0,1),q1=new THREE.Quaternion(-Math.sqrt(.5),0,0,Math.sqrt(.5));
+const CAM_POS=new THREE.Vector3(0,.3,.24);
+function onOri(e){if(e.alpha==null&&e.beta==null)return;ori=e}
+function devQuat(){const d=THREE.MathUtils.DEG2RAD,a=(ori.alpha||0)*d,b=(ori.beta||0)*d,g=(ori.gamma||0)*d,o=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*d;
+  eul.set(b,a,-g,"YXZ");qDev.setFromEuler(eul);qDev.multiply(q1);qDev.multiply(new THREE.Quaternion().setFromAxisAngle(zee,-o));return qDev}
+function camUpdate(){camera.position.copy(CAM_POS);ground.position.set(holder.position.x,0,holder.position.z);key.position.set(holder.position.x+.25,.6,holder.position.z+.35);key.target.position.copy(holder.position);key.target.updateMatrixWorld();
+  if(ori){const q=devQuat();if(yaw0===null){const f=new THREE.Vector3(0,0,-1).applyQuaternion(q);yaw0=Math.atan2(-f.x,-f.z);qOff.setFromAxisAngle(new THREE.Vector3(0,1,0),-yaw0)}
+    camera.quaternion.copy(qOff).multiply(q)}else camera.lookAt(holder.position.x,0,holder.position.z)}
+const ray=new THREE.Raycaster(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),ndc=new THREE.Vector2();
+function planeHit(x,y){ndc.set(x/innerWidth*2-1,-(y/innerHeight)*2+1);ray.setFromCamera(ndc,camera);return ray.ray.intersectPlane(plane,new THREE.Vector3())}
+async function startCam(){
+  try{if(typeof DeviceOrientationEvent!=="undefined"&&DeviceOrientationEvent.requestPermission)await DeviceOrientationEvent.requestPermission().catch(()=>{})}catch(e){}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false})}
+  catch(e){$("how").textContent="لم يُسمح باستخدام الكاميرا. اسمح للمتصفح بالكاميرا من إعدادات الموقع ثم أعد المحاولة.";return}
+  const v=$("video");v.srcObject=stream;v.hidden=false;await v.play().catch(()=>{});
+  cam=true;yaw0=null;camScale=1;holder.position.set(0,0,0);document.body.classList.add("cam");$("camui").hidden=false;disc.visible=false;
+  scene.background=null;renderer.setClearColor(0x000000,0);addEventListener("deviceorientation",onOri);
+  $("camSize").innerHTML=$("size").innerHTML;resize();
+  $("camTip").hidden=false;setTimeout(()=>$("camTip").hidden=true,9000);setTimeout(()=>{if(!ori)$("camTip").textContent="اسحب القطعة بإصبعك لتحريكها، وقرّب أو أبعد بإصبعين حتى يناسب حجمها طاولتك."},1500)}
+function stopCam(){cam=false;stream?.getTracks().forEach(t=>t.stop());stream=null;$("video").hidden=true;$("camui").hidden=true;document.body.classList.remove("cam");disc.visible=true;holder.position.set(0,0,0);holder.scale.setScalar(1);
+  removeEventListener("deviceorientation",onOri);ori=null;resize()}
+$("camClose").onclick=stopCam;
+$("snap").onclick=()=>{const v=$("video"),w=innerWidth,h=innerHeight,pr=Math.min(devicePixelRatio,2),c=document.createElement("canvas");c.width=w*pr;c.height=h*pr;const x=c.getContext("2d");
+  const vr=v.videoWidth/v.videoHeight,cr=w/h;let sw=v.videoWidth,sh=v.videoHeight,sx=0,sy=0;if(vr>cr){sw=sh*cr;sx=(v.videoWidth-sw)/2}else{sh=sw/cr;sy=(v.videoHeight-sh)/2}
+  x.drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);renderer.render(scene,camera);x.drawImage(cv,0,0,c.width,c.height);
+  x.font=`600 ${16*pr}px "IBM Plex Sans Arabic",Tahoma`;x.fillStyle="rgba(255,236,190,.9)";x.textAlign="right";x.fillText("ذهب على طاولتك · "+P[cur].title,c.width-16*pr,c.height-18*pr);
+  c.toBlob(b=>{const u=URL.createObjectURL(b);$("shotImg").src=u;$("shotSave").href=u;$("shot").hidden=false;
+    const f=new File([b],"dhahab.jpg",{type:"image/jpeg"});$("shotShare").hidden=!(navigator.canShare&&navigator.canShare({files:[f]}));$("shotShare").onclick=()=>navigator.share({files:[f],title:P[cur].title}).catch(()=>{})},"image/jpeg",.92)};
+$("shotClose").onclick=()=>$("shot").hidden=true;
+(async()=>{try{arcore=!!(navigator.xr&&await navigator.xr.isSessionSupported("immersive-ar"))}catch(e){}setAR(cur)})();
 show("kilobar");load("bangle");
 window.__show=show;
 </script>
