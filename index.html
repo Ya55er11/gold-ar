@@ -1,0 +1,128 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}</style></head><body><title>ذهب على طاولتك</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap">
+<style>
+/* Layout: a jeweller's viewing tray; the piece fills the screen at true scale, a glass card below picks the piece and opens it in the room */
+:root{
+  --bg:#08070A; --ink:#F4EAD2; --muted:#A99A7C; --gold:#E2BC62; --line:rgba(226,188,98,.28); --glass:rgba(16,13,9,.78);
+  --g-grad:linear-gradient(110deg,#8A6420 0%,#E9C873 22%,#FFF3C8 32%,#D9AE4C 46%,#9C7424 62%,#F2D88C 82%,#B88A2E 100%);
+  --display:"Aref Ruqaa","IBM Plex Sans Arabic",Tahoma,serif; --body:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(ellipse at 50% 38%,#1c1710 0%,var(--bg) 62%);color:var(--ink);font-family:var(--body);direction:rtl;overflow:hidden}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#cv:active{cursor:grabbing}
+.top{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));inset-inline:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:2}
+h1{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,4.4vw,2.5rem);line-height:1.15;background:var(--g-grad);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sheen 8s ease-in-out infinite}
+.top p{margin:2px 0 0;color:var(--muted);font-size:.88rem}
+@keyframes sheen{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
+.size{pointer-events:auto;font-size:.8rem;color:var(--muted);background:var(--glass);border:1px solid var(--line);border-radius:99px;padding:6px 12px;white-space:nowrap;direction:rtl}
+.size b{color:var(--gold);font-weight:600;font-variant-numeric:tabular-nums}
+.dock{position:fixed;inset-inline:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:2;display:flex;justify-content:center;pointer-events:none}
+.card{pointer-events:auto;width:min(560px,100%);background:linear-gradient(180deg,rgba(26,21,13,.88),rgba(12,10,7,.9));border:1px solid var(--line);border-radius:18px;padding:14px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 20px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:12px}
+.picks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pick{font:inherit;text-align:start;cursor:pointer;color:var(--ink);background:rgba(226,188,98,.04);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:1px}
+.pick small{color:var(--muted);font-size:.75rem}
+.pick[aria-pressed="true"]{border-color:var(--gold);background:rgba(226,188,98,.12);box-shadow:inset 0 0 0 1px var(--gold)}
+.pick b{font-weight:600}
+.spec{display:flex;gap:14px;flex-wrap:wrap;font-size:.84rem;color:var(--muted)}
+.spec span b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.ar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;font-size:.95rem;border-radius:12px;padding:10px 18px;cursor:pointer;border:1px solid #F5DC97;color:#1A1307;background:var(--g-grad);background-size:200% 100%;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:background-position .6s}
+.btn:hover{background-position:100% 0}
+.btn svg{width:20px;height:20px}
+.how{font-size:.78rem;color:var(--muted);line-height:1.6;flex:1 1 200px;min-width:0}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.loading{position:fixed;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.9rem;pointer-events:none}
+@media (max-width:520px){.card{padding:12px}.top p{display:none}}
+@media (prefers-reduced-motion:reduce){h1{animation:none}}
+</style>
+
+<canvas id="cv" aria-label="معاينة ثلاثية الأبعاد للقطعة بمقاسها الحقيقي، اسحب لتدويرها وقرّب بإصبعين"></canvas>
+<div class="loading" id="loading">جارٍ تجهيز القطعة…</div>
+<div class="top">
+  <div><h1>ذهب على طاولتك</h1><p>شاهد القطعة بمقاسها الحقيقي في غرفتك قبل زيارة المحل</p></div>
+  <span class="size" id="size">المقاس <b>—</b></span>
+</div>
+<div class="dock"><section class="card">
+  <div class="picks" id="picks">
+    <button class="pick" data-k="kilobar" aria-pressed="true"><b>سبيكة كيلوجرام</b><small>عيار 24 · نقاء 999.9</small></button>
+    <button class="pick" data-k="bangle" aria-pressed="false"><b>أسورة مبرومة</b><small>عيار 21 · ثلاثة خيوط</small></button>
+  </div>
+  <div class="spec" id="spec"></div>
+  <div class="ar">
+    <a class="btn" id="arBtn" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span>اعرضها في غرفتي</span></a>
+    <div class="how" id="how"></div>
+  </div>
+</section></div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
+const P={
+  kilobar:{title:"سبيكة كيلوجرام عيار 24",spec:[["الوزن","1,000 جم"],["النقاء","999.9"],["القيمة","≈ 499,000 ريال"]],note:"بسعر عيار 24 في 5 أكتوبر 2026، ويتغير مع السوق."},
+  bangle:{title:"أسورة مبرومة عيار 21",spec:[["الوزن","≈ 37 جم"],["القطر الداخلي","61 مم"],["القيمة","≈ 16,000 ريال"]],note:"تقدير لوزن الذهب فقط بسعر اليوم، والمصنعية يحددها التاجر."}
+};
+const $=id=>document.getElementById(id);
+const ua=navigator.userAgent,isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1),isAndroid=/Android/i.test(ua);
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const cv=$("cv"),renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene(),pm=new THREE.PMREMGenerator(renderer);scene.environment=pm.fromScene(new RoomEnvironment(renderer),.03).texture;
+const camera=new THREE.PerspectiveCamera(30,1,.005,10);
+const key=new THREE.DirectionalLight(0xfff2dc,2.2);key.position.set(.25,.6,.35);key.castShadow=true;key.shadow.mapSize.set(2048,2048);
+Object.assign(key.shadow.camera,{left:-.12,right:.12,top:.12,bottom:-.12,near:.05,far:2});key.shadow.radius=6;key.shadow.bias=-.0002;scene.add(key);
+scene.add(new THREE.HemisphereLight(0xfff4e0,0x1a140c,.4));
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.ShadowMaterial({opacity:.45}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+// soft velvet disc under the piece
+const disc=new THREE.Mesh(new THREE.CircleGeometry(.11,96),new THREE.MeshPhysicalMaterial({color:0x121014,roughness:.95,sheen:1,sheenColor:new THREE.Color(0x24202a),sheenRoughness:.5}));
+disc.rotation.x=-Math.PI/2;disc.position.y=-.0004;disc.receiveShadow=true;scene.add(disc);
+
+const loader=new GLTFLoader(),cache={},holder=new THREE.Group();scene.add(holder);
+let cur="kilobar",radius=.1,yaw=.55,pitch=.42,zoom=1,idle=0;
+async function load(k){if(!cache[k])cache[k]=new Promise((res,rej)=>loader.load(`models/${k}.json`,g=>{g.scene.traverse(o=>{if(o.isMesh){o.castShadow=o.receiveShadow=true;o.material.envMapIntensity=1.25}});res(g.scene)},undefined,rej));return cache[k]}
+async function show(k){cur=k;[...$("picks").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k));
+  const d=P[k];$("spec").innerHTML=d.spec.map(([a,b])=>`<span>${a} <b>${b}</b></span>`).join("");
+  setAR(k);
+  try{const m=await load(k);if(cur!==k)return;holder.clear();holder.add(m);holder.rotation.y=0;holder.updateMatrixWorld(true);
+    const bb=new THREE.Box3().setFromObject(m),sz=bb.getSize(new THREE.Vector3());radius=Math.max(sz.x,sz.z)*.62+sz.y;
+    const mm=v=>Math.round(v*1000);$("size").innerHTML=`المقاس الحقيقي <b>${mm(sz.x)} × ${mm(sz.z)} × ${mm(sz.y)}</b> مم`;
+    disc.scale.setScalar(Math.max(sz.x,sz.z)/.15);ground.scale.setScalar(Math.max(sz.x,sz.z)*6);holder.rotation.y=k==="bangle"?0:-.35;$("loading").hidden=true}
+  catch(e){$("loading").textContent="تعذّر تحميل القطعة. أعد فتح الصفحة.";$("loading").hidden=false}}
+// Where the AR files live once the platform is on its own domain (glb for Android, usdz for iPhone). Empty = this preview.
+const AR_BASE=new URL("models",location.href).href;
+function setAR(k){const a=$("arBtn");
+  if(AR_BASE&&isIOS){a.removeAttribute("target");a.href=`${AR_BASE}/${k}.usdz`;a.setAttribute("rel","ar");if(!a.querySelector("img")){const i=document.createElement("img");i.alt="";i.width=1;i.height=1;i.style.cssText="position:absolute;opacity:0";a.appendChild(i)}
+    $("how").textContent="يفتح العارض المدمج في الآيفون. وجّه الكاميرا إلى الطاولة حتى تستقر القطعة، ثم حرّكها بإصبعك.";return}
+  if(AR_BASE&&isAndroid){a.removeAttribute("target");a.href=`intent://arvr.google.com/scene-viewer/1.2?file=${encodeURIComponent(`${AR_BASE}/${k}.glb`)}&mode=ar_preferred&title=${encodeURIComponent(P[k].title)}#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(location.href)};end;`;
+    $("how").textContent="يفتح عارض قوقل للواقع المعزز. حرّك الجوال ببطء فوق الطاولة حتى تظهر القطعة بمقاسها الحقيقي.";return}
+  a.removeAttribute("href");a.setAttribute("role","button");a.tabIndex=0;
+  $("how").textContent=isIOS||isAndroid?"اضغط الزر لمعرفة طريقة التجربة على جوالك.":"الواقع المعزز يعمل من الجوال. افتح هذه الصفحة من الآيفون أو أندرويد."}
+$("arBtn").addEventListener("click",e=>{if($("arBtn").href)return;e.preventDefault();
+  $("how").textContent="هذه معاينة. على موقع المنصة يفتح الزر كاميرا جوالك وتظهر القطعة على طاولتك مباشرة. ولتجربتها الآن افتح ملف القطعة المرسل لك في المحادثة من جوالك."});
+$("picks").onclick=e=>{const b=e.target.closest("[data-k]");if(b)show(b.dataset.k)};
+
+const ptrs=new Map();let pinch=0;
+cv.addEventListener("pointerdown",e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);cv.setPointerCapture(e.pointerId)});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);idle=0;
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)zoom=Math.min(1.6,Math.max(.45,zoom*pinch/d));pinch=d;return}
+  yaw-=(e.clientX-prev[0])*.008;pitch=Math.min(1.25,Math.max(.08,pitch+(e.clientY-prev[1])*.006))});
+const up=e=>{ptrs.delete(e.pointerId);pinch=0};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+cv.addEventListener("wheel",e=>{e.preventDefault();zoom=Math.min(1.6,Math.max(.45,zoom*(1+e.deltaY*.001)))},{passive:false});
+
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);const a=w/h<.8?.36:.22;camera.aspect=w/(h*(1+a));camera.fov=2*Math.atan(Math.tan((w/h<.8?40:30)*Math.PI/360)*(1+a))*180/Math.PI;camera.setViewOffset(w,h*(1+a),0,h*a,w,h);camera.updateProjectionMatrix()}
+addEventListener("resize",resize);resize();
+const clock=new THREE.Clock();
+renderer.setAnimationLoop(()=>{const dt=Math.min(.05,clock.getDelta());idle+=dt;if(!reduce&&idle>2.5)holder.rotation.y+=dt*.25;
+  const asp=innerWidth/innerHeight,r=radius*zoom*(asp<.8?1.45:asp<1.2?1.25:1)*2.75;
+  camera.position.set(Math.sin(yaw)*Math.cos(pitch)*r,Math.sin(pitch)*r+.004,Math.cos(yaw)*Math.cos(pitch)*r);camera.lookAt(0,.006,0);
+  renderer.render(scene,camera)});
+show("kilobar");load("bangle");
+window.__show=show;
+</script>
+</body></html>
